@@ -1,5 +1,7 @@
 from PIL import Image, ImageDraw, ImageFont
+from matplotlib import font_manager
 
+font_addr = font_manager.findfont(font_manager.FontProperties(family='sans'))
 
 def generate_data():
 
@@ -87,7 +89,7 @@ def plot_wavelength_frequency(data, filename):
 
         column_top = column_bottom - (item["THz"] * height_scaling)
 
-        draw.rectangle(xy=[x, column_bottom, x - column_width, column_top],
+        draw.rectangle(xy=[x, column_top, x + column_width, column_bottom],
                        fill=item["rgb"])
 
         x += column_width
@@ -110,7 +112,7 @@ def plot_frequency_wavelength(data, filename):
     border_width = 70
     width_scaling = 2
     height_scaling = 0.5
-    image_width = int(401 * width_scaling) + (border_width * 2)
+    image_width = int(406 * width_scaling) + (border_width * 2)
     image_height = int(800 * height_scaling) + (border_width * 2)
     column_width = width_scaling
     column_bottom = image_height - border_width
@@ -124,14 +126,15 @@ def plot_frequency_wavelength(data, filename):
 
     draw = ImageDraw.Draw(image)
 
-    for item in data:
+    for (item, prev) in zip(data, [data[0]] + data[:-1]):
 
         column_top = column_bottom - (item["nm"] * height_scaling)
 
-        draw.rectangle(xy=[x, column_bottom, x - column_width, column_top],
-                       fill=item["rgb"])
+        column_left = image_width - border_width - (data[0]["THz"] - item["THz"] + 1) * width_scaling
+        column_right = image_width - border_width - (data[0]["THz"] - prev["THz"] + 1) * width_scaling
 
-        x -= column_width
+        draw.rectangle(xy=[column_left, column_top, column_right, column_bottom],
+                       fill=item["rgb"])
 
     try:
         image.save(filename, "PNG")
@@ -141,28 +144,28 @@ def plot_frequency_wavelength(data, filename):
 
 def _draw_labels(image, heading_text, x_axis_text, y_axis_text):
 
-    heading_font = ImageFont.truetype('Pillow/Tests/fonts/FreeSans.ttf', 32)
-    axis_font = ImageFont.truetype('Pillow/Tests/fonts/FreeSans.ttf', 16)
+    heading_font = ImageFont.truetype(font_addr, 32)
+    axis_font = ImageFont.truetype(font_addr, 16)
 
     draw = ImageDraw.Draw(image)
 
-    heading_text_size = draw.textsize(text=heading_text, font=heading_font)
-    draw.text(xy=((image.width / 2)-(heading_text_size[0] / 2), 8),
+    heading_text_size = heading_font.getbbox(text=heading_text)
+    draw.text(xy=((image.width / 2)-(heading_text_size[2] / 2), 8),
               text=heading_text,
               align="center",
               font=heading_font,
               fill=(255, 255, 255))
 
-    x_axis_text_size = draw.textsize(text=x_axis_text, font=axis_font)
-    draw.text(xy=((image.width / 2) - (x_axis_text_size[0] / 2), image.height - 24),
+    x_axis_text_size = axis_font.getbbox(text=x_axis_text)
+    draw.text(xy=((image.width / 2) - (x_axis_text_size[2] / 2), image.height - 24),
               text=x_axis_text,
               font=axis_font,
               fill=(255, 255, 255))
 
     image = image.rotate(270, expand=1)
     draw = ImageDraw.Draw(image)
-    y_axis_text_size = draw.textsize(text=y_axis_text, font=axis_font)
-    draw.text(xy=((image.width / 2)-(y_axis_text_size[0] / 2), 8),
+    y_axis_text_size = axis_font.getbbox(text=y_axis_text)
+    draw.text(xy=((image.width / 2)-(y_axis_text_size[2] / 2), 8),
               text=y_axis_text,
               font=axis_font,
               fill=(255, 255, 255))
@@ -177,7 +180,7 @@ def _draw_y_axes(image, border_width, y_axis_start, y_axis_end, y_axis_interval)
     y_axis_indices_x_right = border_width
     y = image.height - border_width
     y_distance = ((image.height - (border_width * 2)) / (y_axis_end - y_axis_start)) * y_axis_interval
-    index_font = ImageFont.truetype('Pillow/Tests/fonts/FreeSans.ttf', 12)
+    index_font = ImageFont.truetype(font_addr, 12)
 
     draw = ImageDraw.Draw(image)
 
@@ -186,8 +189,8 @@ def _draw_y_axes(image, border_width, y_axis_start, y_axis_end, y_axis_interval)
                   fill=(255, 255, 255),
                   width=1)
         v_str = str(v)
-        v_str_size = draw.textsize(text=v_str, font=index_font)
-        draw.text(xy=[y_axis_indices_x_left - 2 - (v_str_size[0]), y - (v_str_size[1] / 2)],
+        v_str_size = index_font.getbbox(text=v_str)
+        draw.text(xy=[y_axis_indices_x_left - 2 - (v_str_size[2]), y - (v_str_size[3] / 2)],
                   text=v_str,
                   font=index_font,
                   fill=(255, 255, 255))
@@ -200,7 +203,7 @@ def _draw_x_axes(image, border_width, x_axis_start, x_axis_end, x_axis_interval)
     x_axis_indices_y_bottom = x_axis_indices_y_top + 8
     x = border_width
     x_distance = ((image.width - (border_width * 2)) / (x_axis_end - x_axis_start)) * x_axis_interval
-    index_font = ImageFont.truetype('Pillow/Tests/fonts/FreeSans.ttf', 12)
+    index_font = ImageFont.truetype(font_addr, 12)
 
     draw = ImageDraw.Draw(image)
 
@@ -209,8 +212,8 @@ def _draw_x_axes(image, border_width, x_axis_start, x_axis_end, x_axis_interval)
                   fill=(255, 255, 255),
                   width=1)
         v_str = str(v)
-        v_str_size = draw.textsize(text=v_str, font=index_font)
-        draw.text(xy=[x - (v_str_size[0] / 2), x_axis_indices_y_bottom + 2],
+        v_str_size = index_font.getbbox(text=v_str)
+        draw.text(xy=[x - (v_str_size[2] / 2), x_axis_indices_y_bottom + 2],
                   text=v_str,
                   font=index_font,
                   fill=(255, 255, 255))
@@ -272,4 +275,4 @@ def _wavelength_to_rgb(nm):
     else:
         rgb["B"] = 0
 
-    return (rgb["R"], rgb["G"], rgb["B"])
+    return (rgb["R"], rgb["G"], rgb["B"]) 
